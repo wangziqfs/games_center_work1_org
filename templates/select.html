@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+    <h2 class="caution">Caution: Selecting a game will destroy your current game</h2>
+    <div class="game_pool">
+        <a href="{{ url_for('select_game', target_game='blackjack') }}"
+           class={{ "active" if cur_game=='blackjack' else "inactive" }}>
+            <h3>Blackjack</h3>
+            <p>Card game where the player aims to get a hand value of 21 or less, competing against the dealer without
+                busting. Face cards count as 10.</p>
+        </a>
+        <a href="{{ url_for('select_game', target_game='blackjack_eu') }}"
+           class={{ "active" if cur_game=='blackjack_eu' else "inactive" }}>
+            <h3>Blackjack_eu</h3>
+            <p>European version of the standard Blackjack, where the dealer receives only one card 
+                initially and does not check for blackjack until the player has acted.</p>
+        </a>
+    </div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+    <div class="text-box">
+        {% if cur_game=="blackjack" %}
+            <h2>Blackjack Rules:</h2>
+            <ul>
+                <li>The game is played with a standard deck of 52 cards.</li>
+                <li>Each player receives two cards at the beginning of the game.</li>
+                <li>The dealer only reveals one of their cards initially.</li>
+                <li>You can choose to take more cards (hit) or stay with your current cards (stand).</li>
+                <li>If you go over 21 points, you immediately lose (bust).</li>
+                <li>The dealer must hit until they reach at least 17 points.</li>
+                <li>If the dealer busts, you win.</li>
+                <li>If neither player busts, the one with the highest total wins.</li>
+            </ul>
+        {% elif cur_game=="blackjack_eu" %}
+            <h2>Blackjack_eu Rules:</h2>
+            <ul>
+                <li>The game is played with a standard deck of 52 cards.</li>
+                <li>Each player receives two cards at the beginning of the game.</li>
+                <li>The dealer receives only one card initially (no hole card).</li>
+                <li>You can choose to take more cards (hit) or stay with your current cards (stand).</li>
+                <li>If you go over 21 points, you immediately lose (bust).</li>
+                <li>The dealer must hit until they reach at least 17 points.</li>
+                <li>Dealer checks for blackjack only after you have finished your hand.</li>
+                <li>If neither busts, the one with the highest total wins.</li>
+            </ul>
+        {% endif %}
+    </div>
+{% endblock %}
