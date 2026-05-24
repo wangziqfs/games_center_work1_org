@@ -18,8 +18,13 @@
             <li><a href="/new_game">New</a></li>
             <li><a href="/game">Play</a></li>
             <li><a href="/rules">Rules</a></li>
-            <li><a href="/log">Log</a></li>
             <li><a href="/about">About</a></li>
+            <li><a href="/lobby">Online PvP</a></li>
+            {% if session.get('user_id') %}
+            <li><a href="/logout">{{ session['username'] }}</a></li>
+            {% else %}
+            <li><a href="/login">Login</a></li>
+            {% endif %}
         </ul>
     </nav>
 </div>

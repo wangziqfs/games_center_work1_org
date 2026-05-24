@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<div class="text-box" style="max-width:420px;margin:50px auto;">
+    <h2>注册</h2>
+    {% if error %}
+        <p style="color:#ff6b8a;background:rgba(255,0,0,0.1);padding:10px;border-radius:8px;">{{ error }}</p>
+    {% endif %}
+    <form method="POST">
+        <div style="margin-bottom:16px;">
+            <label style="display:block;margin-bottom:4px;color:#c0a8d8;">用户名</label>
+            <input type="text" name="username" required maxlength="20"
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(212,175,55,0.3);background:#2D1B4E;color:#e8d5f5;font-size:1rem;">
+        </div>
+        <div style="margin-bottom:16px;">
+            <label style="display:block;margin-bottom:4px;color:#c0a8d8;">密码</label>
+            <input type="password" name="password" required minlength="4"
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(212,175,55,0.3);background:#2D1B4E;color:#e8d5f5;font-size:1rem;">
+        </div>
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:4px;color:#c0a8d8;">确认密码</label>
+            <input type="password" name="confirm" required minlength="4"
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(212,175,55,0.3);background:#2D1B4E;color:#e8d5f5;font-size:1rem;">
+        </div>
+        <button type="submit" class="btn" style="width:100%;">注册</button>
+    </form>
+    <p style="text-align:center;margin-top:16px;color:#a890c8;">已有账号？<a href="{{ url_for('auth_bp.login') }}" style="color:#D4AF37;">登录</a></p>
+</div>
+{% endblock %}

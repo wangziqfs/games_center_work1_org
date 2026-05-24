@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="/static/blackjack.css?v=7">
+    <link rel="stylesheet" href="/static/online_pvp.css?v=1">
+    <link rel="preload" href="/static/svg-cards.svg" as="image" type="image/svg+xml">
+{% endblock %}
+
+{% block main_content %}
+<div class="game-area" id="game-area">
+    <!-- Turn Indicator -->
+    <div class="turn-indicator" id="turn-indicator">准备中...</div>
+
+    <!-- Opponent Area -->
+    <div class="pvp-player-area" id="opp-area">
+        <h2><span id="opp-name">对手</span> (<span id="opp-value">?</span>)</h2>
+        <div class="cards" id="opp-cards"></div>
+    </div>
+
+    <!-- Your Area -->
+    <div class="pvp-player-area active-turn" id="own-area">
+        <h2>你 (<span id="own-value">0</span>)</h2>
+        <div class="cards" id="own-cards"></div>
+    </div>
+
+    <!-- Actions Area -->
+    <div class="actions" id="actions-area">
+        <p style="color:#a890c8;">等待游戏开始...</p>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="connection-status" id="conn-status">
+        <span class="conn-dot connected" id="conn-dot"></span>
+        <span id="conn-text">已连接</span>
+    </div>
+</div>
+
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script>
+var ROOM_CODE = '{{ room_code }}';
+var USER_ID = '{{ session["user_id"] }}';
+var USERNAME = '{{ username }}';
+var socket = io({transports: ['websocket', 'polling'], query: {user_id: USER_ID, username: USERNAME}});
+var gameEnded = false;
+var ownPrevCount = 0;
+var oppPrevCount = 0;
+
+function getCardName(card) {
+    var suits = {'H':'heart','S':'spade','D':'diamond','C':'club'};
+    var ranks = {'A':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','T':'10','J':'jack','Q':'queen','K':'king'};
+    return suits[card[1]] + '_' + ranks[card[0]];
+}
+
+function renderCard(card, animate) {
+    var cls = animate ? 'card card-new' : 'card';
+    return '<svg class="' + cls + '" viewBox="0 0 169 244">' +
+        '<use href="/static/svg-cards.svg#' + getCardName(card) + '"/>' +
+    '</svg>';
+}
+
+function renderCoverCard() {
+    return '<svg class="card cover-card" viewBox="0 0 169 244">' +
+        '<use href="/static/svg-cards.svg#back"/>' +
+    '</svg>';
+}
+
+socket.on('connect', function() {
+    socket.emit('join_room', {room_code: ROOM_CODE});
+    document.getElementById('conn-dot').className = 'conn-dot connected';
+    document.getElementById('conn-text').textContent = '已连接';
+});
+
+socket.on('disconnect', function() {
+    document.getElementById('conn-dot').className = 'conn-dot disconnected';
+    document.getElementById('conn-text').textContent = '已断开';
+});
+
+socket.on('game_view', function(data) {
+    gameEnded = false;
+    updateUI(data);
+});
+
+socket.on('game_over', function(data) {
+    gameEnded = true;
+    updateUI(data);
+});
+
+socket.on('opponent_disconnected', function(data) {
+    document.getElementById('turn-indicator').textContent = '对手已断开，等待重连...';
+    document.getElementById('conn-dot').className = 'conn-dot reconnecting';
+    document.getElementById('conn-text').textContent = '对手已断开';
+});
+
+socket.on('opponent_reconnected', function(data) {
+    document.getElementById('conn-dot').className = 'conn-dot connected';
+    document.getElementById('conn-text').textContent = '已连接';
+});
+
+socket.on('error', function(data) {
+    alert(data.message);
+});
+
+function gameAction(action) {
+    var btns = document.querySelectorAll('#actions-area .btn');
+    for (var i = 0; i < btns.length; i++) btns[i].disabled = true;
+    socket.emit('player_action', {room_code: ROOM_CODE, action: action});
+}
+
+function newGame() {
+    ownPrevCount = 0;
+    oppPrevCount = 0;
+    gameEnded = false;
+    document.querySelectorAll('.cards').forEach(function(el) { el.classList.remove('dimmed'); });
+    socket.emit('player_action', {room_code: ROOM_CODE, action: 'play_again'});
+}
+
+function updateUI(data) {
+    ownPrevCount = document.querySelectorAll('#own-cards .card').length;
+    oppPrevCount = document.querySelectorAll('#opp-cards .card').length;
+
+    // Turn indicator
+    var indicator = document.getElementById('turn-indicator');
+    if (data.phase === 'p1_turn') indicator.textContent = '玩家1 的回合';
+    else if (data.phase === 'p2_turn') indicator.textContent = '玩家2 的回合';
+    else if (data.phase === 'showdown') indicator.textContent = '结果揭晓';
+    else if (data.phase === 'wait_p2') indicator.textContent = '等待玩家2接手';
+    else indicator.textContent = '等待中...';
+
+    // Own cards
+    var ownDiv = document.getElementById('own-cards');
+    if (data.own_hand) {
+        ownDiv.innerHTML = data.own_hand.map(function(c, i) { return renderCard(c, i >= ownPrevCount); }).join('');
+    } else if (data.own_count) {
+        var html = '';
+        for (var i = 0; i < data.own_count; i++) html += renderCoverCard();
+        ownDiv.innerHTML = html;
+    } else {
+        ownDiv.innerHTML = '';
+    }
+    ownPrevCount = data.own_hand ? data.own_hand.length : (data.own_count || 0);
+
+    // Opponent cards
+    var oppDiv = document.getElementById('opp-cards');
+    if (data.opp_hand) {
+        oppDiv.innerHTML = data.opp_hand.map(function(c, i) { return renderCard(c, i >= oppPrevCount); }).join('');
+    } else if (data.opp_count) {
+        var html2 = '';
+        for (var j = 0; j < data.opp_count; j++) html2 += renderCoverCard();
+        oppDiv.innerHTML = html2;
+    } else {
+        oppDiv.innerHTML = '';
+    }
+    oppPrevCount = data.opp_hand ? data.opp_hand.length : (data.opp_count || 0);
+
+    // Values
+    document.getElementById('own-value').textContent = data.own_value_visible ? data.own_value : '?';
+    document.getElementById('opp-value').textContent = data.opp_value_visible ? data.opp_value : '?';
+    document.getElementById('opp-name').textContent = data.opp_username || '对手';
+
+    // Active turn highlighting
+    var ownArea = document.getElementById('own-area');
+    var oppArea = document.getElementById('opp-area');
+    ownArea.classList.remove('active-turn', 'winner-glow');
+    oppArea.classList.remove('active-turn', 'winner-glow');
+    if (data.is_my_turn) ownArea.classList.add('active-turn');
+    if (data.show_all) {
+        if (data.winning_player_num === 1) ownArea.classList.add('winner-glow');
+        if (data.winning_player_num === 2) oppArea.classList.add('winner-glow');
+    }
+
+    // Actions area
+    var actions = document.getElementById('actions-area');
+    if (data.show_all && data.message) {
+        if (!gameEnded) {
+            gameEnded = true;
+            if (data.message_class === 'win-message') {
+                setTimeout(function() { showOverlay('win'); }, 150);
+            }
+        }
+        actions.innerHTML =
+            '<div class="message ' + (data.message_class || '') + '">' +
+                '<h3>' + data.message + '</h3>' +
+            '</div>' +
+            '<button class="btn" onclick="newGame()">再来一局</button>';
+    } else if (data.is_my_turn) {
+        actions.innerHTML =
+            '<div style="display:flex;gap:20px;justify-content:center;">' +
+                '<button class="btn" onclick="gameAction(\'hit\')">Hit</button>' +
+                '<button class="btn" onclick="gameAction(\'stand\')">Stand</button>' +
+            '</div>';
+    } else {
+        actions.innerHTML = '<p style="color:#a890c8;text-align:center;">等待对手操作...</p>';
+    }
+}
+
+// Particle overlay (reused from existing effects)
+function showOverlay(cls) {
+    var canvas = document.createElement('canvas');
+    canvas.className = 'game-overlay';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+    var isWin = cls === 'win';
+    var cx = canvas.width / 2, cy = canvas.height / 2;
+    var particles = [], sparkleTimer = null;
+
+    if (isWin) {
+        var colors = ['#FFD700','#FFC125','#FFE55C','#FFF8DC','#FFA500','#FFEC8B','#FFF','#FFD700'];
+        for (var i = 0; i < 120; i++) {
+            var angle = Math.random() * Math.PI * 2;
+            var speed = 3 + Math.random() * 14;
+            particles.push({
+                x: cx + (Math.random() - 0.5) * 30, y: cy + (Math.random() - 0.5) * 30,
+                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - Math.random() * 6,
+                size: 3 + Math.random() * 8,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                life: 1, decay: 0.005 + Math.random() * 0.012,
+                gravity: 0.09 + Math.random() * 0.09,
+                rotation: Math.random() * 360, rotSpeed: (Math.random() - 0.5) * 14,
+                shape: Math.random() > 0.6 ? 'rect' : 'circle'
+            });
+        }
+        sparkleTimer = setInterval(function() {
+            for (var j = 0; j < 8; j++) {
+                particles.push({
+                    x: cx + (Math.random() - 0.5) * 350, y: cy + (Math.random() - 0.5) * 250,
+                    vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 8 - 2,
+                    size: 1 + Math.random() * 3.5,
+                    color: ['#FFD700','#FFF','#FFE55C','#FFC125','#FFF8DC'][Math.floor(Math.random()*5)],
+                    life: 1, decay: 0.018 + Math.random() * 0.04,
+                    gravity: 0.03, rotation: 0, rotSpeed: (Math.random() - 0.5) * 8, shape: 'circle'
+                });
+            }
+        }, 90);
+    }
+    var frame = 0, maxFrames = isWin ? 200 : 130;
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var alive = false;
+        for (var k = 0; k < particles.length; k++) {
+            var p = particles[k];
+            if (p.life <= 0) continue;
+            alive = true;
+            p.vx *= 0.995; p.vy += p.gravity; p.x += p.vx; p.y += p.vy;
+            p.life -= p.decay; p.rotation += p.rotSpeed;
+            ctx.save(); ctx.globalAlpha = Math.max(0, p.life);
+            ctx.translate(p.x, p.y); ctx.rotate(p.rotation * Math.PI / 180); ctx.fillStyle = p.color;
+            if (p.shape === 'rect') ctx.fillRect(-p.size*0.55, -p.size*0.18, p.size*1.1, p.size*0.36);
+            else { ctx.beginPath(); ctx.arc(0, 0, p.size, 0, Math.PI*2); ctx.fill(); }
+            ctx.restore();
+        }
+        frame++;
+        if ((alive || frame < (isWin ? 130 : 70)) && frame < maxFrames) requestAnimationFrame(animate);
+        else { if (sparkleTimer) clearInterval(sparkleTimer); canvas.remove(); }
+    }
+    requestAnimationFrame(animate);
+}
+</script>
+{% endblock %}

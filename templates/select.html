@@ -49,6 +49,34 @@
             </div>
             <div class="game-card-glow"></div>
         </a>
+
+        {% if session.get('user_id') %}
+        <a href="/lobby" class="game-card online-card">
+            <div class="game-card-icon">&#127760;</div>
+            <div class="game-card-body">
+                <h3 class="game-card-title">Blackjack Online</h3>
+                <p class="game-card-desc">Real-time PvP across devices. Create a room and challenge a friend online!</p>
+                <div class="game-card-tags">
+                    <span class="tag">Online</span>
+                    <span class="tag">Multiplayer</span>
+                </div>
+            </div>
+            <div class="game-card-glow"></div>
+        </a>
+        {% else %}
+        <a href="/login" class="game-card online-card" style="opacity:0.7;">
+            <div class="game-card-icon">&#127760;</div>
+            <div class="game-card-body">
+                <h3 class="game-card-title">Blackjack Online</h3>
+                <p class="game-card-desc">Real-time PvP across devices. Login first to play with friends!</p>
+                <div class="game-card-tags">
+                    <span class="tag">Online</span>
+                    <span class="tag">Login Required</span>
+                </div>
+            </div>
+            <div class="game-card-glow"></div>
+        </a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
