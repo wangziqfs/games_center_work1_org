@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="/static/blackjack.css?v=7">
+    <link rel="preload" href="/static/svg-cards.svg" as="image" type="image/svg+xml">
+{% endblock %}
+
+{% block main_content %}
+
+{% set show_p1 = game_state['show_all'] or game_state['phase'] in ['p1_turn', 'wait_p2'] %}
+{% set show_p2 = game_state['show_all'] or game_state['phase'] == 'p2_turn' %}
+{% set show_p1_val = game_state['show_all'] or game_state['phase'] not in ['p2_turn'] %}
+{% set show_p2_val = game_state['show_all'] or game_state['phase'] not in ['p1_turn', 'wait_p2'] %}
+
+<div class="game-area" id="game-area">
+
+    <!-- Turn Indicator -->
+    <div class="turn-indicator" id="turn-indicator">
+        {% if game_state['phase'] == 'p1_turn' %}
+            玩家1 的回合
+        {% elif game_state['phase'] == 'p2_turn' %}
+            玩家2 的回合
+        {% elif game_state['phase'] == 'showdown' %}
+            结果揭晓
+        {% else %}
+            准备开始
+        {% endif %}
+    </div>
+
+    <!-- Player 1 Area -->
+    <div class="pvp-player-area {{ 'active-turn' if game_state['phase'] == 'p1_turn' else '' }} {{ 'winner-glow' if game_state['phase'] == 'showdown' and game_state['result'] == 'p1_wins' else '' }}" id="p1-area">
+        <h2>玩家 1 {% if show_p1_val %}(<span id="p1-value">{{ game_state['p1_value'] }}</span>){% else %}(<span id="p1-value">?</span>){% endif %}</h2>
+        <div class="cards" id="p1-cards">
+            {% if show_p1 %}
+                {% for card in game_state['p1_hand'] %}
+                    <svg class="card" viewBox="0 0 169 244">
+                        <use href="/static/svg-cards.svg#{{ get_card_name(card) }}"/>
+                    </svg>
+                {% endfor %}
+            {% else %}
+                {% for card in game_state['p1_hand'] %}
+                    <svg class="card cover-card" viewBox="0 0 169 244">
+                        <use href="/static/svg-cards.svg#back"/>
+                    </svg>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Player 2 Area -->
+    <div class="pvp-player-area {{ 'active-turn' if game_state['phase'] == 'p2_turn' else '' }} {{ 'winner-glow' if game_state['phase'] == 'showdown' and game_state['result'] == 'p2_wins' else '' }}" id="p2-area">
+        <h2>玩家 2 {% if show_p2_val %}(<span id="p2-value">{{ game_state['p2_value'] }}</span>){% else %}(<span id="p2-value">?</span>){% endif %}</h2>
+        <div class="cards" id="p2-cards">
+            {% if show_p2 %}
+                {% for card in game_state['p2_hand'] %}
+                    <svg class="card" viewBox="0 0 169 244">
+                        <use href="/static/svg-cards.svg#{{ get_card_name(card) }}"/>
+                    </svg>
+                {% endfor %}
+            {% else %}
+                {% for card in game_state['p2_hand'] %}
+                    <svg class="card cover-card" viewBox="0 0 169 244">
+                        <use href="/static/svg-cards.svg#back"/>
+                    </svg>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Actions Area -->
+    <div class="actions" id="actions-area">
+        {% if game_state['phase'] in ['p1_turn', 'p2_turn'] %}
+            <div style="display:flex;gap:20px;justify-content:center;">
+                <button class="btn" onclick="gameAction('hit')">Hit</button>
+                <button class="btn" onclick="gameAction('stand')">Stand</button>
+            </div>
+        {% elif game_state['phase'] == 'showdown' and game_state['message'] %}
+            <div class="message {{ game_state['message_class'] }}" id="message-box">
+                <h3>{{ game_state['message'] }}</h3>
+            </div>
+            <button class="btn" onclick="newGame()">Play Again</button>
+        {% else %}
+            <p style="color:#a890c8;text-align:center;">等待中...</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pass-device overlay (rendered server-side for wait_p2, toggled via JS otherwise) -->
+{% if game_state['phase'] == 'wait_p2' %}
+<div class="pass-device-overlay" id="pass-overlay">
+    <div class="pass-device-icon">&#128241;</div>
+    <h2>请将设备交给玩家 2</h2>
+    <p>玩家 2 准备好后点击下方按钮</p>
+    <button class="btn" onclick="gameAction('pass_device')">我是玩家 2</button>
+</div>
+{% else %}
+<div class="pass-device-overlay" id="pass-overlay" style="display:none;">
+    <div class="pass-device-icon">&#128241;</div>
+    <h2>请将设备交给玩家 2</h2>
+    <p>玩家 2 准备好后点击下方按钮</p>
+    <button class="btn" onclick="gameAction('pass_device')">我是玩家 2</button>
+</div>
+{% endif %}
+
+<script>
+let prevP1Count = {{ game_state['p1_hand'] | length }};
+let prevP2Count = {{ game_state['p2_hand'] | length }};
+let gameEnded = {{ 'true' if game_state['phase'] == 'showdown' else 'false' }};
+
+function getCardName(card) {
+    const suits = {'H':'heart','S':'spade','D':'diamond','C':'club'};
+    const ranks = {'A':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','T':'10','J':'jack','Q':'queen','K':'king'};
+    return suits[card[1]] + '_' + ranks[card[0]];
+}
+
+function renderCard(card, animate) {
+    const cls = animate ? 'card card-new' : 'card';
+    return '<svg class="' + cls + '" viewBox="0 0 169 244">' +
+        '<use href="/static/svg-cards.svg#' + getCardName(card) + '"/>' +
+    '</svg>';
+}
+
+function renderCoverCard() {
+    return '<svg class="card cover-card" viewBox="0 0 169 244">' +
+        '<use href="/static/svg-cards.svg#back"/>' +
+    '</svg>';
+}
+
+function gameAction(action) {
+    const btns = document.querySelectorAll('#actions-area .btn, #pass-overlay .btn');
+    btns.forEach(function(b) { b.disabled = true; });
+    fetch('/game_action/' + action)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            prevP1Count = document.querySelectorAll('#p1-cards .card').length;
+            prevP2Count = document.querySelectorAll('#p2-cards .card').length;
+            updateUI(data);
+        });
+}
+
+function newGame() {
+    prevP1Count = 2;
+    prevP2Count = 2;
+    document.querySelectorAll('.cards').forEach(function(el) { el.classList.remove('dimmed'); });
+    fetch('/game_action/new')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            gameEnded = false;
+            updateUI(data);
+        });
+}
+
+function showOverlay(cls) {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'game-overlay';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+
+    const isWin = cls === 'win';
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const particles = [];
+    let sparkleTimer = null;
+
+    if (isWin) {
+        const colors = ['#FFD700','#FFC125','#FFE55C','#FFF8DC','#FFA500','#FFEC8B','#FFF','#FFD700','#FFC125','#FFE55C'];
+        for (let i = 0; i < 120; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 3 + Math.random() * 14;
+            particles.push({
+                x: cx + (Math.random() - 0.5) * 30,
+                y: cy + (Math.random() - 0.5) * 30,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - Math.random() * 6,
+                size: 3 + Math.random() * 8,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                life: 1,
+                decay: 0.005 + Math.random() * 0.012,
+                gravity: 0.09 + Math.random() * 0.09,
+                rotation: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 14,
+                shape: Math.random() > 0.6 ? 'rect' : 'circle',
+            });
+        }
+        sparkleTimer = setInterval(function() {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: cx + (Math.random() - 0.5) * 350,
+                    y: cy + (Math.random() - 0.5) * 250,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: -Math.random() * 8 - 2,
+                    size: 1 + Math.random() * 3.5,
+                    color: ['#FFD700','#FFF','#FFE55C','#FFC125','#FFF8DC'][Math.floor(Math.random()*5)],
+                    life: 1,
+                    decay: 0.018 + Math.random() * 0.04,
+                    gravity: 0.03,
+                    rotation: 0,
+                    rotSpeed: (Math.random() - 0.5) * 8,
+                    shape: 'circle',
+                });
+            }
+        }, 90);
+    } else {
+        const colors = ['#8B0000','#B71C1C','#4A0000','#880E4F','#D50000','#3E0000','#6D0000','#900000','#5C0000'];
+        for (let i = 0; i < 60; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 2,
+                vy: -(Math.random() * 3 + 0.3),
+                size: 2 + Math.random() * 6,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                life: 1,
+                decay: 0.006 + Math.random() * 0.018,
+                gravity: -0.025,
+                rotation: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 3,
+                shape: 'circle',
+            });
+        }
+    }
+
+    let frame = 0;
+    const maxFrames = isWin ? 200 : 130;
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            if (p.life <= 0) continue;
+            alive = true;
+            p.vx *= 0.995;
+            p.vy += p.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= p.decay;
+            p.rotation += p.rotSpeed;
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation * Math.PI / 180);
+            ctx.fillStyle = p.color;
+            if (p.shape === 'rect') {
+                ctx.fillRect(-p.size * 0.55, -p.size * 0.18, p.size * 1.1, p.size * 0.36);
+            } else {
+                ctx.beginPath();
+                ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+        if (!isWin && frame < 50) {
+            const va = (1 - frame / 50) * 0.4;
+            const grad = ctx.createRadialGradient(cx, cy, canvas.width * 0.25, cx, cy, canvas.width * 0.75);
+            grad.addColorStop(0, 'transparent');
+            grad.addColorStop(1, 'rgba(139, 0, 0, ' + va + ')');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        frame++;
+        if ((alive || frame < (isWin ? 130 : 70)) && frame < maxFrames) {
+            requestAnimationFrame(animate);
+        } else {
+            if (sparkleTimer) clearInterval(sparkleTimer);
+            canvas.remove();
+        }
+    }
+    requestAnimationFrame(animate);
+}
+
+function updateUI(data) {
+    const showP1 = data.show_all || data.phase === 'p1_turn' || data.phase === 'wait_p2';
+    const showP2 = data.show_all || data.phase === 'p2_turn';
+    const showP1Val = data.show_all || data.phase !== 'p2_turn';
+    const showP2Val = data.show_all || (data.phase !== 'p1_turn' && data.phase !== 'wait_p2');
+
+    // Turn indicator
+    const indicator = document.getElementById('turn-indicator');
+    if (data.phase === 'p1_turn') indicator.textContent = '玩家1 的回合';
+    else if (data.phase === 'p2_turn') indicator.textContent = '玩家2 的回合';
+    else if (data.phase === 'showdown') indicator.textContent = '结果揭晓';
+    else if (data.phase === 'wait_p2') indicator.textContent = '等待玩家 2 接手';
+    else indicator.textContent = '准备开始';
+
+    // P1 cards
+    const p1Div = document.getElementById('p1-cards');
+    if (showP1) {
+        p1Div.innerHTML = data.p1_hand.map(function(c, i) { return renderCard(c, i >= prevP1Count); }).join('');
+    } else {
+        p1Div.innerHTML = data.p1_hand.map(function() { return renderCoverCard(); }).join('');
+    }
+
+    // P2 cards
+    const p2Div = document.getElementById('p2-cards');
+    if (showP2) {
+        p2Div.innerHTML = data.p2_hand.map(function(c, i) { return renderCard(c, i >= prevP2Count); }).join('');
+    } else {
+        p2Div.innerHTML = data.p2_hand.map(function() { return renderCoverCard(); }).join('');
+    }
+
+    // Values
+    document.getElementById('p1-value').textContent = showP1Val ? data.p1_value : '?';
+    document.getElementById('p2-value').textContent = showP2Val ? data.p2_value : '?';
+
+    prevP1Count = data.p1_hand.length;
+    prevP2Count = data.p2_hand.length;
+
+    // Active turn highlighting
+    const p1Area = document.getElementById('p1-area');
+    const p2Area = document.getElementById('p2-area');
+    p1Area.classList.remove('active-turn', 'winner-glow');
+    p2Area.classList.remove('active-turn', 'winner-glow');
+    if (data.phase === 'p1_turn') p1Area.classList.add('active-turn');
+    if (data.phase === 'p2_turn') p2Area.classList.add('active-turn');
+    if (data.phase === 'showdown' && data.result === 'p1_wins') p1Area.classList.add('winner-glow');
+    if (data.phase === 'showdown' && data.result === 'p2_wins') p2Area.classList.add('winner-glow');
+
+    // Pass-device overlay
+    const passOverlay = document.getElementById('pass-overlay');
+    if (data.phase === 'wait_p2') {
+        passOverlay.style.display = 'flex';
+    } else {
+        passOverlay.style.display = 'none';
+    }
+
+    // Actions area
+    const actionsDiv = document.getElementById('actions-area');
+    if (data.phase === 'p1_turn' || data.phase === 'p2_turn') {
+        actionsDiv.innerHTML =
+            '<div style="display:flex;gap:20px;justify-content:center;">' +
+                '<button class="btn" onclick="gameAction(\'hit\')">Hit</button>' +
+                '<button class="btn" onclick="gameAction(\'stand\')">Stand</button>' +
+            '</div>';
+    } else if (data.phase === 'showdown' && data.message) {
+        if (!gameEnded) {
+            gameEnded = true;
+            if (data.message_class === 'win-message') {
+                setTimeout(function() { showOverlay('win'); }, 150);
+            } else if (data.message_class === 'lose-message') {
+                setTimeout(function() { showOverlay('lose'); }, 100);
+            }
+        }
+        actionsDiv.innerHTML =
+            '<div class="message ' + data.message_class + '">' +
+                '<h3>' + data.message + '</h3>' +
+            '</div>' +
+            '<button class="btn" onclick="newGame()">Play Again</button>';
+    } else {
+        actionsDiv.innerHTML = '<p style="color:#a890c8;text-align:center;">等待中...</p>';
+    }
+}
+</script>
+{% endblock %}

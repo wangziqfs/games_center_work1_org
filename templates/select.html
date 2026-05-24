@@ -35,6 +35,20 @@
             </div>
             <div class="game-card-glow"></div>
         </a>
+
+        <a href="{{ url_for('select_game', target_game='blackjack_pvp') }}"
+           class="game-card {{ 'active' if cur_game=='blackjack_pvp' else '' }}">
+            <div class="game-card-icon">&#128101;</div>
+            <div class="game-card-body">
+                <h3 class="game-card-title">Blackjack PvP</h3>
+                <p class="game-card-desc">Two-player pass-and-play. Hidden hands, face off, and showdown!</p>
+                <div class="game-card-tags">
+                    <span class="tag">PvP</span>
+                    <span class="tag">Pass &amp; Play</span>
+                </div>
+            </div>
+            <div class="game-card-glow"></div>
+        </a>
     </div>
 </div>
 {% endblock %}

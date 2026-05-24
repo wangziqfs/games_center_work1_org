@@ -2,9 +2,9 @@ import os
 import uuid
 from flask import Flask, render_template, redirect, url_for, session, jsonify
 from playcard import get_card_name
-import blackjack, blackjack_eu
+import blackjack, blackjack_eu, blackjack_pvp
 
-SUPPORTED_GAMES = {'blackjack': blackjack, 'blackjack_eu': blackjack_eu}
+SUPPORTED_GAMES = {'blackjack': blackjack, 'blackjack_eu': blackjack_eu, 'blackjack_pvp': blackjack_pvp}
 app = Flask(__name__)
 # Generate a random secret key for the session
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'games_center_fixed_secret_2026!@#')
@@ -63,12 +63,24 @@ def game_action(action):
     session.modified = True
     gs = session.get('game_state', {})
     return jsonify({
+        # PvE fields
         'dealer_hand': gs.get('dealer_hand', []),
         'dealer_value': gs.get('dealer_value', 0),
         'player_hand': gs.get('player_hand', []),
         'player_value': gs.get('player_value', 0),
         'message': gs.get('message'),
         'message_class': gs.get('message_class', ''),
+        # PvP fields
+        'p1_hand': gs.get('p1_hand', []),
+        'p2_hand': gs.get('p2_hand', []),
+        'p1_value': gs.get('p1_value', 0),
+        'p2_value': gs.get('p2_value', 0),
+        'phase': gs.get('phase', ''),
+        'current_player': gs.get('current_player', 1),
+        'show_all': gs.get('show_all', False),
+        'p1_status': gs.get('p1_status', ''),
+        'p2_status': gs.get('p2_status', ''),
+        'result': gs.get('result'),
     })
 
 
