@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
 {% block head %}
-    <link rel="stylesheet" href="/static/blackjack.css">
+    <link rel="stylesheet" href="/static/blackjack.css?v=7">
     <link rel="preload" href="/static/svg-cards.svg" as="image" type="image/svg+xml">
 {% endblock %}
 
 {% block main_content %}
-    <div class="game-area">
+    <div class="game-area" id="game-area">
         <div class="dealer-area">
-            <h2>Dealer's Hand ({{ game_state['dealer_value'] }})</h2>
-            <div class="cards">
+            <h2>Dealer's Hand (<span id="dealer-value">{{ game_state['dealer_value'] }}</span>)</h2>
+            <div class="cards" id="dealer-cards">
                 {% if not game_state['message'] %}
                     <svg class="card" viewBox="0 0 169 244">
                         <use href="/static/svg-cards.svg#{{ get_card_name(game_state['dealer_hand'][0]) }}"/>
                     </svg>
-                    <svg class="card" viewBox="0 0 169 244">
+                    <svg class="card cover-card" viewBox="0 0 169 244">
                         <use href="/static/svg-cards.svg#back"/>
                     </svg>
                 {% else %}
@@ -28,8 +28,8 @@
         </div>
 
         <div class="player-area">
-            <h2>Your Hand ({{ game_state['player_value'] }})</h2>
-            <div class="cards">
+            <h2>Your Hand (<span id="player-value">{{ game_state['player_value'] }}</span>)</h2>
+            <div class="cards" id="player-cards">
                 {% for card in game_state['player_hand'] %}
                     <svg class="card" viewBox="0 0 169 244">
                         <use href="/static/svg-cards.svg#{{ get_card_name(card) }}"/>
@@ -38,15 +38,254 @@
             </div>
         </div>
 
-        <div class="actions">
+        <div class="actions" id="actions-area">
             {% if not game_state['message'] %}
-                <a href="{{ url_for('game_update', action='hit') }}" class="btn">Hit</a>
-                <a href="{{ url_for('game_update', action='stand') }}" class="btn">Stand</a>
+                <button class="btn" onclick="gameAction('hit')">Hit</button>
+                <button class="btn" onclick="gameAction('stand')">Stand</button>
             {% else %}
-                <div class="message {{ game_state['message_class'] }}">
+                <div class="message {{ game_state['message_class'] }}" id="message-box">
                     <h3>{{ game_state['message'] }}</h3>
                 </div>
+                <button class="btn" onclick="newGame()">Play Again</button>
             {% endif %}
         </div>
     </div>
+
+    <script>
+    let prevPlayerCount = {{ game_state['player_hand'] | length }};
+    let prevDealerCount = {{ game_state['dealer_hand'] | length }};
+    let gameEnded = {{ 'true' if game_state['message'] else 'false' }};
+
+    function renderCard(card, animate) {
+        const cls = animate ? 'card card-new' : 'card';
+        return `<svg class="${cls}" viewBox="0 0 169 244">
+            <use href="/static/svg-cards.svg#${getCardName(card)}"/>
+        </svg>`;
+    }
+
+    function getCardName(card) {
+        const suits = {'H':'heart','S':'spade','D':'diamond','C':'club'};
+        const ranks = {'A':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','T':'10','J':'jack','Q':'queen','K':'king'};
+        return suits[card[1]] + '_' + ranks[card[0]];
+    }
+
+    function gameAction(action) {
+        const btns = document.querySelectorAll('#actions-area .btn');
+        btns.forEach(b => b.disabled = true);
+
+        fetch('/game_action/' + action)
+            .then(r => r.json())
+            .then(data => {
+                prevPlayerCount = document.querySelectorAll('#player-cards .card').length;
+                prevDealerCount = document.querySelectorAll('#dealer-cards .card').length;
+                updateUI(data);
+            });
+    }
+
+    function newGame() {
+        prevPlayerCount = 2;
+        prevDealerCount = 1;
+        fetch('/game_action/new')
+            .then(r => r.json())
+            .then(data => {
+                gameEnded = false;
+                updateUI(data);
+            });
+    }
+
+    function showOverlay(cls) {
+        const canvas = document.createElement('canvas');
+        canvas.className = 'game-overlay';
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+
+        const isWin = cls === 'win';
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const particles = [];
+        let sparkleTimer = null;
+
+        if (isWin) {
+            // Phase 1: Gold confetti burst from center
+            const colors = ['#FFD700','#FFC125','#FFE55C','#FFF8DC','#FFA500','#FFEC8B','#FFF','#FFD700','#FFC125','#FFE55C'];
+            for (let i = 0; i < 120; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 3 + Math.random() * 14;
+                particles.push({
+                    x: cx + (Math.random() - 0.5) * 30,
+                    y: cy + (Math.random() - 0.5) * 30,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - Math.random() * 6,
+                    size: 3 + Math.random() * 8,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 1,
+                    decay: 0.005 + Math.random() * 0.012,
+                    gravity: 0.09 + Math.random() * 0.09,
+                    rotation: Math.random() * 360,
+                    rotSpeed: (Math.random() - 0.5) * 14,
+                    shape: Math.random() > 0.6 ? 'rect' : 'circle',
+                });
+            }
+            // Phase 2: Continuous sparkle rain for 2 seconds
+            sparkleTimer = setInterval(function() {
+                for (let i = 0; i < 8; i++) {
+                    particles.push({
+                        x: cx + (Math.random() - 0.5) * 350,
+                        y: cy + (Math.random() - 0.5) * 250,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: -Math.random() * 8 - 2,
+                        size: 1 + Math.random() * 3.5,
+                        color: ['#FFD700','#FFF','#FFE55C','#FFC125','#FFF8DC'][Math.floor(Math.random()*5)],
+                        life: 1,
+                        decay: 0.018 + Math.random() * 0.04,
+                        gravity: 0.03,
+                        rotation: 0,
+                        rotSpeed: (Math.random() - 0.5) * 8,
+                        shape: 'circle',
+                    });
+                }
+            }, 90);
+        } else {
+            // Lose: Dark/red particles + red vignette
+            const colors = ['#8B0000','#B71C1C','#4A0000','#880E4F','#D50000','#3E0000','#6D0000','#900000','#5C0000'];
+            for (let i = 0; i < 60; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: -(Math.random() * 3 + 0.3),
+                    size: 2 + Math.random() * 6,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 1,
+                    decay: 0.006 + Math.random() * 0.018,
+                    gravity: -0.025,
+                    rotation: Math.random() * 360,
+                    rotSpeed: (Math.random() - 0.5) * 3,
+                    shape: 'circle',
+                });
+            }
+        }
+
+        let frame = 0;
+        const maxFrames = isWin ? 200 : 130;
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let alive = false;
+
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                if (p.life <= 0) continue;
+                alive = true;
+
+                p.vx *= 0.995;
+                p.vy += p.gravity;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= p.decay;
+                p.rotation += p.rotSpeed;
+
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rotation * Math.PI / 180);
+                ctx.fillStyle = p.color;
+
+                if (p.shape === 'rect') {
+                    ctx.fillRect(-p.size * 0.55, -p.size * 0.18, p.size * 1.1, p.size * 0.36);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // Red vignette on lose (fades out over first 0.8s)
+            if (!isWin && frame < 50) {
+                const va = (1 - frame / 50) * 0.4;
+                const grad = ctx.createRadialGradient(cx, cy, canvas.width * 0.25, cx, cy, canvas.width * 0.75);
+                grad.addColorStop(0, 'transparent');
+                grad.addColorStop(1, 'rgba(139, 0, 0, ' + va + ')');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            frame++;
+
+            if ((alive || frame < (isWin ? 130 : 70)) && frame < maxFrames) {
+                requestAnimationFrame(animate);
+            } else {
+                if (sparkleTimer) clearInterval(sparkleTimer);
+                canvas.remove();
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    function screenShake() {
+        const area = document.getElementById('game-area');
+        if (!area) return;
+        area.classList.add('screen-shake');
+        setTimeout(function() { area.classList.remove('screen-shake'); }, 650);
+    }
+
+    function updateUI(data) {
+        document.getElementById('dealer-value').textContent = data.dealer_value;
+
+        const dealerDiv = document.getElementById('dealer-cards');
+        const showAll = !!data.message;
+        let dealerHTML = '';
+        if (!showAll) {
+            dealerHTML = renderCard(data.dealer_hand[0], false) +
+                `<svg class="card cover-card" viewBox="0 0 169 244">
+                    <use href="/static/svg-cards.svg#back"/>
+                </svg>`;
+        } else {
+            dealerHTML = data.dealer_hand.map((c, i) => renderCard(c, i >= prevDealerCount)).join('');
+        }
+        dealerDiv.innerHTML = dealerHTML;
+
+        document.getElementById('player-value').textContent = data.player_value;
+        const playerCount = data.player_hand.length;
+        document.getElementById('player-cards').innerHTML =
+            data.player_hand.map((c, i) => renderCard(c, i >= prevPlayerCount)).join('');
+
+        prevPlayerCount = playerCount;
+        prevDealerCount = showAll ? data.dealer_hand.length : prevDealerCount;
+
+        const actionsDiv = document.getElementById('actions-area');
+        if (!data.message) {
+            // Clear lose effects
+            document.querySelectorAll('.cards').forEach(function(el) { el.classList.remove('dimmed'); });
+            actionsDiv.innerHTML = `
+                <div style="display:flex;gap:20px;justify-content:center;">
+                    <button class="btn" onclick="gameAction('hit')">Hit</button>
+                    <button class="btn" onclick="gameAction('stand')">Stand</button>
+                </div>`;
+        } else {
+            if (!gameEnded) {
+                gameEnded = true;
+                if (data.message_class === 'win-message') {
+                    setTimeout(function() { showOverlay('win'); }, 150);
+                } else if (data.message_class === 'lose-message') {
+                    setTimeout(function() { showOverlay('lose'); }, 100);
+                    setTimeout(function() { screenShake(); }, 50);
+                    setTimeout(function() {
+                        document.querySelectorAll('.cards').forEach(function(el) { el.classList.add('dimmed'); });
+                    }, 400);
+                }
+            }
+            actionsDiv.innerHTML = `
+                <div class="message ${data.message_class}">
+                    <h3>${data.message}</h3>
+                </div>
+                <button class="btn" onclick="newGame()">Play Again</button>`;
+        }
+    }
+    </script>
 {% endblock %}

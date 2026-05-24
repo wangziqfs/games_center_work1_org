@@ -10,7 +10,8 @@
     margin-bottom: 15px;
     padding-top: 4px;
     padding-bottom: 4px;
-    border-bottom: 1px solid #fff;
+    border-bottom: 1px solid #D4AF37;
+    color: #F0D060;
 }
 
 /* Cards */
@@ -31,11 +32,11 @@
 /* Message */
 .message {
     text-align: center;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(30, 10, 46, 0.85);
     padding: 8px;
     border-radius: 10px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
-    border: 3px solid #ffcc00;
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+    border: 3px solid #D4AF37;
 }
 
 .message h3 {
@@ -56,10 +57,10 @@
 .btn {
     display: inline-block;
     padding: 15px 30px;
-    background-color: #ffcc00;
-    color: #000;
+    background-color: #D4AF37;
+    color: #1a0a2e;
     text-decoration: none;
-    border-radius: 5px;
+    border-radius: 8px;
     font-weight: bold;
     transition: all 0.3s ease;
     font-size: 1.2rem;
@@ -67,9 +68,9 @@
 }
 
 .btn:hover {
-    background-color: #e6b800;
+    background-color: #F0D060;
     transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
 }
 
 /* Responsive Adjustments */

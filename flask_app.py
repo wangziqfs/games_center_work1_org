@@ -1,13 +1,13 @@
 import os
 import uuid
-from flask import Flask, render_template, redirect, url_for, session
+from flask import Flask, render_template, redirect, url_for, session, jsonify
 from playcard import get_card_name
 import blackjack, blackjack_eu
 
 SUPPORTED_GAMES = {'blackjack': blackjack, 'blackjack_eu': blackjack_eu}
 app = Flask(__name__)
 # Generate a random secret key for the session
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.urandom(24))
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'games_center_fixed_secret_2026!@#')
 
 @app.route('/')
 def index():
@@ -48,6 +48,28 @@ def game_update(action):
         return redirect(url_for('game'))
     else:
         return redirect(url_for('select'))
+
+
+@app.route('/game_action/<action>')
+def game_action(action):
+    cur_game = session.get('cur_game', '')
+    if cur_game not in SUPPORTED_GAMES:
+        return jsonify({'error': 'no game selected'}), 400
+    game_mod = SUPPORTED_GAMES[cur_game]
+    if action == 'new':
+        game_mod.new_game(session)
+    else:
+        game_mod.game_update(session, action)
+    session.modified = True
+    gs = session.get('game_state', {})
+    return jsonify({
+        'dealer_hand': gs.get('dealer_hand', []),
+        'dealer_value': gs.get('dealer_value', 0),
+        'player_hand': gs.get('player_hand', []),
+        'player_value': gs.get('player_value', 0),
+        'message': gs.get('message'),
+        'message_class': gs.get('message_class', ''),
+    })
 
 
 @app.route('/select_game/<target_game>')

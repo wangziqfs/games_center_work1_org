@@ -3,28 +3,28 @@
 {% block main_content %}
     <div class="text-box">
         {% if cur_game=="blackjack" %}
-            <h2>Blackjack Rules:</h2>
+            <h2>21点 游戏规则：</h2>
             <ul>
-                <li>The game is played with a standard deck of 52 cards.</li>
-                <li>Each player receives two cards at the beginning of the game.</li>
-                <li>The dealer only reveals one of their cards initially.</li>
-                <li>You can choose to take more cards (hit) or stay with your current cards (stand).</li>
-                <li>If you go over 21 points, you immediately lose (bust).</li>
-                <li>The dealer must hit until they reach at least 17 points.</li>
-                <li>If the dealer busts, you win.</li>
-                <li>If neither player busts, the one with the highest total wins.</li>
+                <li>使用标准 52 张扑克牌进行游戏。</li>
+                <li>开局每人发两张牌，庄家只亮出其中一张。</li>
+                <li>你可以选择继续要牌（Hit）或停止要牌（Stand）。</li>
+                <li>如果手牌点数超过 21 点，立即爆牌（Bust）输掉游戏。</li>
+                <li>庄家必须持续要牌直到点数达到 17 点及以上。</li>
+                <li>如果庄家爆牌，你获胜。</li>
+                <li>若双方都未爆牌，点数高者获胜。</li>
+                <li>牌面点数：A=1或11，J/Q/K=10，其余按牌面数字计算。</li>
             </ul>
         {% elif cur_game=="blackjack_eu" %}
-            <h2>Blackjack_eu Rules:</h2>
+            <h2>21点（欧洲版）游戏规则：</h2>
             <ul>
-                <li>The game is played with a standard deck of 52 cards.</li>
-                <li>Each player receives two cards at the beginning of the game.</li>
-                <li>The dealer receives only one card initially (no hole card).</li>
-                <li>You can choose to take more cards (hit) or stay with your current cards (stand).</li>
-                <li>If you go over 21 points, you immediately lose (bust).</li>
-                <li>The dealer must hit until they reach at least 17 points.</li>
-                <li>Dealer checks for blackjack only after you have finished your hand.</li>
-                <li>If neither busts, the one with the highest total wins.</li>
+                <li>使用标准 52 张扑克牌进行游戏。</li>
+                <li>开局每人发两张牌，庄家只亮出一张（无底牌）。</li>
+                <li>你可以选择继续要牌（Hit）或停止要牌（Stand）。</li>
+                <li>如果手牌点数超过 21 点，立即爆牌（Bust）输掉游戏。</li>
+                <li>庄家必须持续要牌直到点数达到 17 点及以上。</li>
+                <li>庄家只在你完成所有操作后才补第二张牌并检查黑杰克。</li>
+                <li>若双方都未爆牌，点数高者获胜。</li>
+                <li>牌面点数：A=1或11，J/Q/K=10，其余按牌面数字计算。</li>
             </ul>
         {% endif %}
     </div>

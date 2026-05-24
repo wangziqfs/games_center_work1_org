@@ -100,7 +100,7 @@ def game_update(session, action):
         # The player loses immediately after busting.
         if player_value > 21:
             game_state['dealer_value'] = calculate_hand_value(dealer_hand)
-            game_state['message'] = 'You busted! Dealer wins.'
+            game_state['message'] = '你爆牌了！庄家获胜。'
             game_state['message_class'] = 'lose-message'
             # add_log_entry(session_id, 'Player busts and loses.')
 
@@ -121,11 +121,11 @@ def game_update(session, action):
         if dealer_natural:
             game_state['dealer_value'] = dealer_value
             if player_natural:
-                game_state['message'] = "It's a tie of double blackjack!"
+                game_state['message'] = '双方都是黑杰克，平局！'
                 game_state['message_class'] = 'tie-message'
                 # add_log_entry(session_id, 'Dealer and player tie with both natural blackjack.')
             else:
-                game_state['message'] = 'Dealer wins with a natural blackjack!'
+                game_state['message'] = '庄家天胡黑杰克！你输了。'
                 game_state['message_class'] = 'lose-message'
                 # add_log_entry(session_id, 'Dealer wins with a natural blackjack.')
             session.modified = True
@@ -143,19 +143,19 @@ def game_update(session, action):
 
         # Determine the winner using the original comparison rules.
         if dealer_value > 21:
-            game_state['message'] = 'Dealer busted! You win!'
+            game_state['message'] = '庄家爆牌！你赢了！'
             game_state['message_class'] = 'win-message'
             # add_log_entry(session_id, 'Dealer busts. Player wins.')
         elif dealer_value > player_value:
-            game_state['message'] = 'Dealer wins!'
+            game_state['message'] = '庄家获胜！'
             game_state['message_class'] = 'lose-message'
             # add_log_entry(session_id, f'Dealer wins by {dealer_value}:{player_value}.')
         elif dealer_value < player_value:
-            game_state['message'] = 'You win!'
+            game_state['message'] = '恭喜，你赢了！'
             game_state['message_class'] = 'win-message'
             # add_log_entry(session_id, f'Player wins by {player_value}:{dealer_value}.')
         else:
-            game_state['message'] = "It's a tie!"
+            game_state['message'] = '平局！'
             game_state['message_class'] = 'tie-message'
             # add_log_entry(session_id, f'Dealer and Player tie with {player_value}:{dealer_value}.')
 

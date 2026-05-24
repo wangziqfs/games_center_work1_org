@@ -1,19 +1,40 @@
 {% extends "base.html" %}
 
 {% block main_content %}
-    <h2 class="caution">Caution: Selecting a game will destroy your current game</h2>
+<div class="select-page">
+    <div class="select-hero">
+        <h2 class="select-title">Choose Your Game</h2>
+        <p class="select-subtitle">Pick a game and start playing — your current game will be replaced</p>
+    </div>
+
     <div class="game_pool">
         <a href="{{ url_for('select_game', target_game='blackjack') }}"
-           class={{ "active" if cur_game=='blackjack' else "inactive" }}>
-            <h3>Blackjack</h3>
-            <p>Card game where the player aims to get a hand value of 21 or less, competing against the dealer without
-                busting. Face cards count as 10.</p>
+           class="game-card {{ 'active' if cur_game=='blackjack' else '' }}">
+            <div class="game-card-icon">♠️</div>
+            <div class="game-card-body">
+                <h3 class="game-card-title">Blackjack</h3>
+                <p class="game-card-desc">Classic 21-point card game. Beat the dealer without going bust.</p>
+                <div class="game-card-tags">
+                    <span class="tag">Classic</span>
+                    <span class="tag">PvE</span>
+                </div>
+            </div>
+            <div class="game-card-glow"></div>
         </a>
+
         <a href="{{ url_for('select_game', target_game='blackjack_eu') }}"
-           class={{ "active" if cur_game=='blackjack_eu' else "inactive" }}>
-            <h3>Blackjack_eu</h3>
-            <p>European version of the standard Blackjack, where the dealer receives only one card 
-                initially and does not check for blackjack until the player has acted.</p>
+           class="game-card {{ 'active' if cur_game=='blackjack_eu' else '' }}">
+            <div class="game-card-icon">🏰</div>
+            <div class="game-card-body">
+                <h3 class="game-card-title">Blackjack EU</h3>
+                <p class="game-card-desc">European rules — dealer gets one card. More suspense, deeper strategy.</p>
+                <div class="game-card-tags">
+                    <span class="tag">European</span>
+                    <span class="tag">Strategy</span>
+                </div>
+            </div>
+            <div class="game-card-glow"></div>
         </a>
     </div>
+</div>
 {% endblock %}
