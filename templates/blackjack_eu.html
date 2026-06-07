@@ -14,9 +14,6 @@
                     <svg class="card" viewBox="0 0 169 244">
                         <use href="/static/svg-cards.svg#{{ get_card_name(game_state['dealer_hand'][0]) }}"/>
                     </svg>
-                    <svg class="card cover-card" viewBox="0 0 169 244">
-                        <use href="/static/svg-cards.svg#back"/>
-                    </svg>
                 {% else %}
                     {% for card in game_state['dealer_hand'] %}
                         <svg class="card" viewBox="0 0 169 244">
@@ -241,10 +238,7 @@
         const showAll = !!data.message;
         let dealerHTML = '';
         if (!showAll) {
-            dealerHTML = renderCard(data.dealer_hand[0], false) +
-                `<svg class="card cover-card" viewBox="0 0 169 244">
-                    <use href="/static/svg-cards.svg#back"/>
-                </svg>`;
+            dealerHTML = renderCard(data.dealer_hand[0], false);
         } else {
             dealerHTML = data.dealer_hand.map((c, i) => renderCard(c, i >= prevDealerCount)).join('');
         }
