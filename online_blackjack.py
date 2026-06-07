@@ -24,28 +24,29 @@ def is_natural_blackjack(hand):
 
 
 def compare_hands(p1_hand, p2_hand, p1_bust, p2_bust):
+    """Returns (result, p1_msg, p2_msg, p1_cls, p2_cls) — per-player messages & styles."""
     if p1_bust and p2_bust:
-        return ('tie', '双方都爆牌，平局！', 'tie-message')
+        return ('tie', '双方都爆牌，平局！', '双方都爆牌，平局！', 'tie-message', 'tie-message')
     if p1_bust:
-        return ('p2_wins', '玩家1爆牌！玩家2获胜！', 'win-message')
+        return ('p2_wins', '你爆牌了！', '对手爆牌，你赢了！', 'lose-message', 'win-message')
     if p2_bust:
-        return ('p1_wins', '玩家2爆牌！玩家1获胜！', 'win-message')
+        return ('p1_wins', '对手爆牌，你赢了！', '你爆牌了！', 'win-message', 'lose-message')
     p1_nat = is_natural_blackjack(p1_hand)
     p2_nat = is_natural_blackjack(p2_hand)
     p1_val = calculate_hand_value(p1_hand)
     p2_val = calculate_hand_value(p2_hand)
     if p1_nat and p2_nat:
-        return ('tie', '双方都是黑杰克，平局！', 'tie-message')
+        return ('tie', '双方都是黑杰克，平局！', '双方都是黑杰克，平局！', 'tie-message', 'tie-message')
     if p1_nat:
-        return ('p1_wins', '玩家1黑杰克获胜！', 'win-message')
+        return ('p1_wins', '黑杰克！你赢了！', '对手黑杰克，你输了！', 'win-message', 'lose-message')
     if p2_nat:
-        return ('p2_wins', '玩家2黑杰克获胜！', 'win-message')
+        return ('p2_wins', '对手黑杰克，你输了！', '黑杰克！你赢了！', 'lose-message', 'win-message')
     if p1_val > p2_val:
-        return ('p1_wins', f'玩家1获胜！（{p1_val} : {p2_val}）', 'win-message')
+        return ('p1_wins', f'你赢了！（{p1_val} : {p2_val}）', f'你输了！（{p2_val} : {p1_val}）', 'win-message', 'lose-message')
     elif p2_val > p1_val:
-        return ('p2_wins', f'玩家2获胜！（{p1_val} : {p2_val}）', 'win-message')
+        return ('p2_wins', f'你输了！（{p1_val} : {p2_val}）', f'你赢了！（{p2_val} : {p1_val}）', 'lose-message', 'win-message')
     else:
-        return ('tie', f'平局！（{p1_val} : {p2_val}）', 'tie-message')
+        return ('tie', f'平局！（{p1_val} : {p2_val}）', f'平局！（{p1_val} : {p2_val}）', 'tie-message', 'tie-message')
 
 
 def new_game(room):
@@ -67,7 +68,10 @@ def new_game(room):
             'phase': 'showdown', 'current_player': 1,
             'p1_status': 'blackjack', 'p2_status': 'blackjack',
             'show_all': True,
-            'message': '双方都是黑杰克，平局！', 'message_class': 'tie-message',
+            'message_p1': '双方都是黑杰克，平局！',
+            'message_p2': '双方都是黑杰克，平局！',
+            'message_class_p1': 'tie-message',
+            'message_class_p2': 'tie-message',
             'result': 'tie',
         }
         return
@@ -79,7 +83,9 @@ def new_game(room):
         'phase': 'p1_turn', 'current_player': 1,
         'p1_status': 'playing', 'p2_status': 'playing',
         'show_all': False,
-        'message': None, 'message_class': '',
+        'message_p1': None, 'message_p2': None,
+        'message_class_p1': '',
+        'message_class_p2': '',
         'result': None,
     }
 
@@ -100,10 +106,12 @@ def _transition_to_p2(gs):
         gs['phase'] = 'showdown'
         gs['show_all'] = True
         gs['p2_status'] = 'blackjack'
-        res, msg, cls = compare_hands(gs['p1_hand'], gs['p2_hand'], False, False)
+        res, msg_p1, msg_p2, cls_p1, cls_p2 = compare_hands(gs['p1_hand'], gs['p2_hand'], False, False)
         gs['result'] = res
-        gs['message'] = msg
-        gs['message_class'] = cls
+        gs['message_p1'] = msg_p1
+        gs['message_p2'] = msg_p2
+        gs['message_class_p1'] = cls_p1
+        gs['message_class_p2'] = cls_p2
 
 
 def process_action(room, user_id, action):
@@ -130,8 +138,10 @@ def process_action(room, user_id, action):
             except IndexError:
                 gs['phase'] = 'showdown'
                 gs['show_all'] = True
-                gs['message'] = '牌堆已空！'
-                gs['message_class'] = 'tie-message'
+                gs['message_p1'] = '牌堆已空！'
+                gs['message_p2'] = '牌堆已空！'
+                gs['message_class_p1'] = 'tie-message'
+                gs['message_class_p2'] = 'tie-message'
                 gs['result'] = 'tie'
                 return None
             gs['p1_hand'].append(card)
@@ -141,10 +151,12 @@ def process_action(room, user_id, action):
                 gs['show_all'] = True
                 gs['p1_status'] = 'bust'
                 gs['p2_value'] = calculate_hand_value(gs['p2_hand'])
-                res, msg, cls = compare_hands(gs['p1_hand'], gs['p2_hand'], True, False)
+                res, msg_p1, msg_p2, cls_p1, cls_p2 = compare_hands(gs['p1_hand'], gs['p2_hand'], True, False)
                 gs['result'] = res
-                gs['message'] = msg
-                gs['message_class'] = cls
+                gs['message_p1'] = msg_p1
+                gs['message_p2'] = msg_p2
+                gs['message_class_p1'] = cls_p1
+                gs['message_class_p2'] = cls_p2
             elif gs['p1_value'] == 21:
                 _transition_to_p2(gs)
                 gs['p1_status'] = 'stood_21'
@@ -159,8 +171,10 @@ def process_action(room, user_id, action):
             except IndexError:
                 gs['phase'] = 'showdown'
                 gs['show_all'] = True
-                gs['message'] = '牌堆已空！'
-                gs['message_class'] = 'tie-message'
+                gs['message_p1'] = '牌堆已空！'
+                gs['message_p2'] = '牌堆已空！'
+                gs['message_class_p1'] = 'tie-message'
+                gs['message_class_p2'] = 'tie-message'
                 gs['result'] = 'tie'
                 return None
             gs['p2_hand'].append(card)
@@ -169,28 +183,33 @@ def process_action(room, user_id, action):
                 gs['phase'] = 'showdown'
                 gs['show_all'] = True
                 gs['p2_status'] = 'bust'
-                res, msg, cls = compare_hands(gs['p1_hand'], gs['p2_hand'], False, True)
+                res, msg_p1, msg_p2, cls_p1, cls_p2 = compare_hands(gs['p1_hand'], gs['p2_hand'], False, True)
                 gs['result'] = res
-                gs['message'] = msg
-                gs['message_class'] = cls
+                gs['message_p1'] = msg_p1
+                gs['message_p2'] = msg_p2
+                gs['message_class_p1'] = cls_p1
+                gs['message_class_p2'] = cls_p2
             elif gs['p2_value'] == 21:
                 gs['show_all'] = True
                 gs['p2_status'] = 'stood_21'
                 gs['phase'] = 'showdown'
-                res, msg, cls = compare_hands(gs['p1_hand'], gs['p2_hand'], False, False)
+                res, msg_p1, msg_p2, cls_p1, cls_p2 = compare_hands(gs['p1_hand'], gs['p2_hand'], False, False)
                 gs['result'] = res
-                gs['message'] = msg
-                gs['message_class'] = cls
+                gs['message_p1'] = msg_p1
+                gs['message_p2'] = msg_p2
+                gs['message_class_p1'] = cls_p1
+                gs['message_class_p2'] = cls_p2
         elif action == 'stand':
             gs['show_all'] = True
             gs['p2_status'] = 'stood'
             gs['phase'] = 'showdown'
-            # Check if P2 had natural
             if gs.get('p2_natural'):
                 gs['p2_status'] = 'blackjack'
-            res, msg, cls = compare_hands(gs['p1_hand'], gs['p2_hand'], False, False)
+            res, msg_p1, msg_p2, cls_p1, cls_p2 = compare_hands(gs['p1_hand'], gs['p2_hand'], False, False)
             gs['result'] = res
-            gs['message'] = msg
-            gs['message_class'] = cls
+            gs['message_p1'] = msg_p1
+            gs['message_p2'] = msg_p2
+            gs['message_class_p1'] = cls_p1
+            gs['message_class_p2'] = cls_p2
 
     return None  # success

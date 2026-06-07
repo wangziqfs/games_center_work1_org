@@ -136,8 +136,8 @@ def get_player_view(room, user_id):
         'opp_value_visible': show_all,
         'opp_username': room.players[opp_id]['username'] if opp_id else 'Opponent',
 
-        'message': gs.get('message') if show_all or phase == 'showdown' else None,
-        'message_class': gs.get('message_class', '') if show_all or phase == 'showdown' else '',
+        'message': gs.get(f'message_{p_key}') if (show_all or phase == 'showdown') else None,
+        'message_class': gs.get(f'message_class_{p_key}', '') if show_all or phase == 'showdown' else '',
         'result': gs.get('result') if show_all else None,
         'show_all': show_all,
 
